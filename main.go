@@ -1,127 +1,70 @@
 package main
 
 import (
-	"flag"
+	"GoDeveloperPath/duplicate_file_handler"
+	"GoDeveloperPath/loan_calulator"
+	"GoDeveloperPath/smart_calculator"
+	"GoDeveloperPath/vcs"
+	"bufio"
 	"fmt"
-	"math"
-	"strings"
+	"os"
+	"strconv"
 )
 
-const (
-	paymentMessage               = "Your monthly payment = %.2f\n"
-	periodsMessage               = "It will take %s to repay the loan\n"
-	principalMessage             = "Your loan principal = %.2f!\n"
-	differentiatedPaymentMessage = "Month %d: payment is %d\n"
-	incorrectParametersMessage   = "Incorrect parameters"
-	overpaymentMessage           = "Overpayment = %.2f\n"
-)
+var projects = []string{
+	"1. Duplicate File Handler",
+	"2. Smart Calculator",
+	"3. Loan Calculator",
+	"4. Version Control System",
+}
 
 func main() {
-
-	var payment, principal, interest float64
-	var periods int
-	var paymentType string
-
-	flag.StringVar(&paymentType, "type", "", "Payment type")
-	flag.Float64Var(&principal, "principal", -1, "Principal of the loan")
-	flag.Float64Var(&payment, "payment", -1, "Payment of the loan")
-	flag.IntVar(&periods, "periods", -1, "Number of month to repay the loan")
-	flag.Float64Var(&interest, "interest", -1, "Number of month to repay the loan")
-
-	flag.Parse()
-
-	if interest < 0 || paymentType == "" {
-		fmt.Println(incorrectParametersMessage)
-		return
+	projectNum, err := chooseProject()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
-	option := getCalculationType(paymentType, principal, payment, periods)
-	interestRate := interest / (12 * 100)
-	var overpayment float64
+	switch projectNum {
+	case 1:
+		fmt.Println("You are running Duplicate File Handler")
+		duplicate_file_handler.Run()
+	case 2:
+		fmt.Println("You are running Smart Calculator")
+		smart_calculator.Run()
+	case 3:
+		fmt.Println("You are running Loan Calculator")
+		loan_calulator.Run()
+	case 4:
+		fmt.Println("You are running Version Control System")
+		vcs.Run()
+	default:
+		fmt.Println("Unknown project")
+	}
+}
 
-	switch option {
-	case "annuity.periods":
-		months := calculateNumberOfPayments(principal, payment, interestRate)
-		overpayment = (payment)*float64(months) - principal
-		message := formatMonth(months)
-		fmt.Printf(periodsMessage, message)
-	case "annuity.payment":
-		monthPayment := calculateMonthPayment(interestRate, principal, periods)
-		overpayment = float64(periods)*(monthPayment) - principal
-		fmt.Printf(paymentMessage, monthPayment)
-	case "annuity.principal":
-		loanPrincipal := calculateLoanPrincipal(interestRate, payment, periods)
-		overpayment = (payment)*float64(periods) - loanPrincipal
-		fmt.Printf(principalMessage, loanPrincipal)
-	case "diff":
-		payments := calculateDifferentiatedPayment(interestRate, principal, periods)
-		for index, value := range payments {
-			overpayment += float64(value)
-			fmt.Printf(differentiatedPaymentMessage, index+1, value)
+func chooseProject() (int, error) {
+	var num int
+	var err error
+	fmt.Println("Choose a project")
+	for k, p := range projects {
+		fmt.Printf("%d - %s\n", k, p)
+	}
+	fmt.Println("Enter the project's number or q to quit")
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		text := scanner.Text()
+		switch text {
+		case "q":
+			os.Exit(0)
+		default:
+			num, err = strconv.Atoi(text)
+			if err != nil {
+				fmt.Println("Wrong format")
+				continue
+			}
+			return num, nil
 		}
-		overpayment = overpayment - principal
-	default:
-		fmt.Println(incorrectParametersMessage)
-		return
 	}
-
-	fmt.Printf(overpaymentMessage, overpayment)
-}
-
-func calculateMonthPayment(interestRate, principal float64, periods int) float64 {
-	payment := principal * (interestRate * math.Pow(1+interestRate, float64(periods)) / (math.Pow(1+interestRate, float64(periods)) - 1))
-	return math.Ceil(payment)
-}
-
-func calculateLoanPrincipal(interestRate, payment float64, periods int) float64 {
-	return payment / (interestRate * math.Pow(1+interestRate, float64(periods)) / (math.Pow(1+interestRate, float64(periods)) - 1))
-}
-
-func calculateNumberOfPayments(principal, payment, interestRate float64) int {
-	number := math.Log(payment/(payment-interestRate*principal)) / math.Log(1+interestRate)
-	return int(math.Ceil(number))
-}
-
-func calculateDifferentiatedPayment(interestRate, principal float64, periods int) []int {
-	result := make([]int, periods)
-	for i := 0; i < periods; i++ {
-		p := principal/float64(periods) + interestRate*(principal-principal*float64(i)/float64(periods))
-		result[i] = int(math.Ceil(p))
-	}
-	return result
-}
-
-func getCalculationType(paymentType string, principal, payment float64, periods int) string {
-	if paymentType == "diff" && principal > 0 && periods > 0 {
-		return "diff"
-	}
-	if principal < 0 && payment > 0 && periods > 0 {
-		return "annuity.principal"
-	}
-	if principal > 0 && payment > 0 && periods < 0 {
-		return "annuity.periods"
-	}
-	if principal > 0 && payment < 0 && periods > 0 {
-		return "annuity.payment"
-	}
-	return ""
-}
-
-func formatMonth(months int) string {
-	years := months / 12
-	reminder := months % 12
-	var message string
-
-	switch {
-	case years == 0:
-		message = fmt.Sprintf("%d months", reminder)
-	case reminder == 0:
-		message = fmt.Sprintf("%d years", years)
-	default:
-		message = fmt.Sprintf("%d years and %d months", years, reminder)
-	}
-	if reminder == 1 {
-		message = strings.Replace(message, "months", "month", 1)
-	}
-	return message
+	return 0, err
 }
